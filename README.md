@@ -1,5 +1,5 @@
   
-  File Structure
+ File Structure
 
 ├── app
 │   ├── __init__.py
@@ -39,4 +39,5 @@
 ├── .env
 ├── requirements.txt
 ├── .gitignore
+
 └── README.md
