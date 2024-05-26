@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Rooms</title>
+</head>
+<body>
+    <div id="rooms"></div>
+    <script>
+        const roomsDiv = document.getElementById('rooms');
+
+        // Replace 'your_token_here' with the actual token
+        const token = 'your_token_here';
+        const ws = new WebSocket(`ws://localhost:8000/ws/rooms?token=${token}`);
+
+        ws.onmessage = function(event) {
+            const rooms = JSON.parse(event.data);
+            roomsDiv.innerHTML = '';  // Clear previous content
+
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.innerText = `${room.room_name}: ${room.latest_message}`;
+                roomsDiv.appendChild(roomElement);
+            });
+        };
+
+        ws.onclose = function(event) {
+            console.log('WebSocket closed:', event);
+        };
+
+        ws.onerror = function(event) {
+            console.error('WebSocket error:', event);
+        };
+    </script>
+</body>
+</html>
