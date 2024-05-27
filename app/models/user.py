@@ -1,10 +1,10 @@
-
 # app/models/user.py
 from bson import ObjectId
 from app.database import users_collection
-from pydantic  import Field,BaseModel,EmailStr
-class UserModel(BaseModel):
+from pydantic import BaseModel, EmailStr, Field
 
+class UserModel(BaseModel):
+    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
     username: str = Field(..., max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=8)
@@ -12,17 +12,17 @@ class UserModel(BaseModel):
     role: str | None = None
     login_type: str
     active: bool = False
-    verified:bool =False
+    verified: bool = False
 
-
-
+    class Config:
+        allow_population_by_field_name = True
 
 def get_user_by_username(user_id: str):
-    print(user_id, "----------------------------------->")
     try:
-        object_id = ObjectId(user_id)
-        user = users_collection.find_one({"_id": object_id})
-
+       
+        user = users_collection.find_one({"email": "jamsheerak802@gmail.com"})
+        if user:
+            return user
     except Exception as e:
-        raise ValueError(f"Invalid user ID format: {user_id}")
-    return user
+        raise ValueError(f"Invalid user ID format: {user_id}",e)
+    return None

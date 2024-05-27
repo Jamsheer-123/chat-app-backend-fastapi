@@ -2,7 +2,7 @@
 import logging
 from pymongo import MongoClient
 from pymongo.server_api import ServerApi
-from .config import settings
+from app.config import settings
 
 logging.basicConfig(level=logging.DEBUG)
 

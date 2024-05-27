@@ -1,5 +1,5 @@
 # app/models/chat.py
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from bson import ObjectId
 from bson.errors import InvalidId
 from app.database import chats_collection, users_collection
@@ -14,18 +14,12 @@ def create_message(sender: str, content: str):
     }
     return message
 
-# app/models/chat.py
-
-def save_message(room_id: str, message: dict):
+def save_message(room_id: str, message):
     chats_collection.update_one(
         {"_id": ObjectId(room_id)},
-        {
-            "$push": {"messages": message},
-            "$set": {"latest_message": message}  # Update the latest message
-        },
+        {"$push": {"messages": message}, "$set": {"last_message": message}},
         upsert=True
     )
-
 
 def get_messages(room_id: str):
     room = chats_collection.find_one({"_id": ObjectId(room_id)})
@@ -43,7 +37,8 @@ def create_room(room_name: Optional[str], participants: List[str]):
     room = {
         "room_name": room_name,
         "participants": participants,
-        "messages": []
+        "messages": [],
+        "last_message": None
     }
     result = chats_collection.insert_one(room)
     return str(result.inserted_id)
@@ -67,17 +62,26 @@ def is_valid_user(user_id: str) -> bool:
     return users_collection.find_one({"_id": object_id}) is not None
 
 def get_rooms_for_user(user_id: str) -> List[Dict[str, Any]]:
+    print("============================>")
     rooms = chats_collection.find({"participants": user_id})
     return list(rooms)
 
-def get_latest_message(room_id: str) -> Optional[Dict[str, Any]]:
-    room = chats_collection.find_one(
-        {"_id": ObjectId(room_id)},
-        {"messages": {"$slice": -1}}
-    )
-    if room and "messages" in room and room["messages"]:
-        return room["messages"][0]
-    return None
+def get_latest_message(room_id: str) -> Optional[Dict[str, Union[str, Dict[str, Union[str, ObjectId]]]]]:
+    room = get_room(room_id)
+    if not room:
+        return None
 
+    messages = get_messages(room_id)
+    if not messages:
+        return None
 
+    latest_message = max(messages, key=lambda x: x["timestamp"])
+    # sender = get_user_by_id(latest_message["sender"])
+    # if not sender:
+    #     return None
 
+    return {
+        # "sender": sender,
+        "content": latest_message["content"],
+        "timestamp": latest_message["timestamp"]
+    }

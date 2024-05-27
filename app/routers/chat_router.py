@@ -1,8 +1,10 @@
 # app/routers/chat_router.py
+import asyncio
 from typing import Annotated, List, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, status
+from app.models.user import UserModel, get_user_by_username
 from app.schemas.chat import CreateMessage, Message, CreateRoom, Room
-from app.utils.authentication import get_current_active_user
+from app.utils.authentication import get_current_active_user, get_user_from_token
 from app.models.chat import create_message, save_message, get_messages, create_room, get_room, get_rooms_for_user, get_latest_message,is_valid_user
 
 chatRouter = APIRouter()
@@ -77,3 +79,36 @@ async def get_user_rooms(
         })
     
     return user_rooms
+
+
+@chatRouter.websocket("/ws/room/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    print(user_id)
+    await websocket.accept()
+    print("sdgfdsfd")
+    # Validate user ID or retrieve user information based on the user ID
+    user = get_user_by_username("6654a50aee63002fb4e4b422")
+    if not user:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    rooms = get_rooms_for_user(user_id)
+    
+    user_rooms = []
+    for room in rooms:
+        latest_message = get_latest_message(room["_id"])
+        user_rooms.append({
+            "room_id": str(room["_id"]),
+            "room_name": room.get("room_name"),
+            "participants": room["participants"],
+            "latest_message": latest_message
+        })
+
+    await websocket.send_json(user_rooms)
+
+    try:
+        while True:
+            await asyncio.sleep(3600)  # Sleep for an hour
+            # You can handle periodic updates here if needed
+    except WebSocketDisconnect:
+        print("Client disconnected")

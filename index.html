@@ -1,35 +1,52 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Rooms</title>
 </head>
 <body>
-    <div id="rooms"></div>
+    <h1>Chat Rooms</h1>
+    <div id="roomsList"></div>
+
     <script>
-        const roomsDiv = document.getElementById('rooms');
+        const roomsList = document.getElementById('roomsList');
+        const userId = '6654a50aee63002fb4e4b422';
 
-        // Replace 'your_token_here' with the actual token
-        const token = 'your_token_here';
-        const ws = new WebSocket(`ws://localhost:8000/ws/rooms?token=${token}`);
+        // Establish WebSocket connection
+        const ws = new WebSocket(`ws://localhost:8000/api/chat/ws/room/${userId}`);
 
+        // Event handler for when WebSocket connection is opened
+        ws.onopen = function(event) {
+            console.log('WebSocket connection opened');
+        };
+
+        // Event handler for incoming messages from the WebSocket server
         ws.onmessage = function(event) {
             const rooms = JSON.parse(event.data);
-            roomsDiv.innerHTML = '';  // Clear previous content
-
-            rooms.forEach(room => {
-                const roomElement = document.createElement('div');
-                roomElement.innerText = `${room.room_name}: ${room.latest_message}`;
-                roomsDiv.appendChild(roomElement);
-            });
+            displayChatRooms(rooms);
         };
 
-        ws.onclose = function(event) {
-            console.log('WebSocket closed:', event);
-        };
-
+        // Event handler for WebSocket errors
         ws.onerror = function(event) {
             console.error('WebSocket error:', event);
         };
+
+        // Function to display chat rooms
+        function displayChatRooms(rooms) {
+            console.log(rooms)
+            roomsList.innerHTML = ''; // Clear previous content
+
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.innerHTML = `
+                    <h3>${room.room_name}</h3>
+                    <p>Participants: ${room.participants.join(', ')}</p>
+                    <p>Latest Message: ${room.latest_message["content"]}</p>
+                `;
+                roomsList.appendChild(roomElement);
+            });
+        }
     </script>
 </body>
 </html>
