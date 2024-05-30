@@ -13,6 +13,7 @@ from app.config import settings
 
 # to get a string like this run:
 # openssl rand -hex 32
+
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 43200
@@ -51,7 +52,7 @@ def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user["password"]):
         return False
     return user
 

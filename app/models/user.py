@@ -17,12 +17,12 @@ class UserModel(BaseModel):
     class Config:
         allow_population_by_field_name = True
 
-def get_user_by_username(user_id: str):
+def get_user_by_username(email: str):
     try:
        
-        user = users_collection.find_one({"email": "jamsheerak802@gmail.com"})
+        user = users_collection.find_one({"email": email})
         if user:
             return user
     except Exception as e:
-        raise ValueError(f"Invalid user ID format: {user_id}",e)
+        raise ValueError(f"Invalid user ID format: {email}",e)
     return None

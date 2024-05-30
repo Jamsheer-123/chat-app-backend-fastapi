@@ -8,6 +8,7 @@ from typing import Annotated
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
 
+from app.schemas.password_reset import PasswordReset, PasswordResetRequest
 from app.schemas.tokens import Token
 from app.schemas.user_schema import LoginUserSchema, UserCreate
 from app.utils.authentication import authenticate_user, create_access_token, verify_password, get_password_hash
@@ -85,17 +86,64 @@ def login(payload: LoginUserSchema):
 
     return {'status': 'success', 'access_token': access_token}
 
-@authRouter.post("/token", response_model=Token)
-async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
-    user = authenticate_user(users_collection, form_data.username, form_data.password)
+# @authRouter.post("/token", response_model=Token)
+# async def login_for_access_token(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]) -> Token:
+#     user = authenticate_user(users_collection, form_data.username, form_data.password)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect username or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+#     access_token = create_access_token(data={'sub': user['email']}, expires_delta=access_token_expires)
+#     return Token(access_token=access_token, token_type="bearer")
+
+
+
+# Password reset endpoints
+
+@authRouter.post('/password-reset-request')
+async def request_password_reset(payload: PasswordResetRequest):
+    user = users_collection.find_one({'email': payload.email.lower()})
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-    return Token(access_token=access_token, token_type="bearer")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='User not found')
+
+    reset_token = ''.join(random.choices('0123456789abcdefghijklmnopqrstuvwxyz', k=32))
+    hashed_reset_token = hashlib.sha256(reset_token.encode()).hexdigest()
+
+    users_collection.update_one({'email': payload.email.lower()}, {
+        '$set': {
+            'reset_token': hashed_reset_token,
+            'reset_token_expiry': datetime.utcnow() + timedelta(minutes=30)
+        }
+    })
+
+    try:
+        await Email({'username': user['username']}, reset_token, [user['email']]).sendPasswordResetToken(reset_token)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f'Failed to send email: {str(e)}')
+
+    return {'status': 'success', 'message': 'Password reset token sent to your email'}
+
+@authRouter.post('/password-reset')
+async def reset_password(payload: PasswordReset):
+    user = users_collection.find_one({'reset_token': hashlib.sha256(payload.token.encode()).hexdigest()})
+    if not user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid token')
+
+    if user.get('reset_token_expiry') < datetime.utcnow():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token expired')
+
+    hashed_password = get_password_hash(payload.new_password)
+    users_collection.update_one({'email': user['email']}, {
+        '$set': {
+            'password': hashed_password
+        },
+        '$unset': {
+            'reset_token': "",
+            'reset_token_expiry': ""
+        }
+    })
+
+    return {'status': 'success', 'message': 'Password reset successfully'}

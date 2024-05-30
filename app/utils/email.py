@@ -1,4 +1,3 @@
-
 import random
 import string
 from typing import List
@@ -8,7 +7,7 @@ import os
 
 def generate_otp(length=6):
     """Generate a random OTP."""
-    return ''.join(random.choices(string.digits, k= length))
+    return ''.join(random.choices(string.digits, k=length))
 
 class Email:
     def __init__(self, user: dict, url: str, email: List[EmailStr]):
@@ -17,7 +16,7 @@ class Email:
         self.email = email
         self.url = url
 
-    async def sendMail(self, subject, otp):
+    async def sendMail(self, subject, content):
         # Define the config
         conf = ConnectionConfig(
             MAIL_USERNAME="chaty142@gmail.com",
@@ -42,9 +41,8 @@ class Email:
             </head>
             <body>
                 <p>Hello {self.name},</p>
-                <p>Your verification code is: <strong>{otp}</strong></p>
-                <p>Please use this code to verify your email address.</p>
-                <p>If you did not request this verification code, you can safely ignore this email.</p>
+                <p>{content}</p>
+                <p>If you did not request this, you can safely ignore this email.</p>
                 <p>Thank you!</p>
             </body>
             </html>
@@ -72,4 +70,8 @@ class Email:
         print(f"Generated OTP: {otp}")
 
         # Send email with OTP
-        await self.sendMail('Your verification code (Valid for 10min)', otp)
+        await self.sendMail('Your verification code (Valid for 10min)', f'Your verification code is: <strong>{otp}</strong>')
+
+    async def sendPasswordResetToken(self, reset_token):
+        # Send email with password reset token
+        await self.sendMail('Your password reset token', f'Your password reset token is: <strong>{reset_token}</strong>. Please use this token to reset your password.')
